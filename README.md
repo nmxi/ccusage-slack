@@ -10,9 +10,38 @@ npm install
 ```
 
 2. Slack App トークンを取得:
-   - https://api.slack.com/apps で新しいアプリを作成
-   - OAuth & Permissions で **User Token Scopes** に `users.profile:write` スコープを追加
-   - User OAuth Token をコピー
+
+   **事前準備:**
+   - Slackワークスペースの管理者権限またはアプリインストール権限が必要です
+   - 個人のワークスペースでも動作します
+
+   **手順:**
+   
+   a. **Slack Appを作成**
+      - https://api.slack.com/apps にアクセス
+      - 右上の「Create New App」ボタンをクリック
+      - 「From scratch」を選択
+      - App Name: 任意の名前（例: "Claude Usage Updater"）
+      - Pick a workspace: 使用するワークスペースを選択
+      - 「Create App」をクリック
+
+   b. **OAuth権限を設定**
+      - 左サイドメニューから「OAuth & Permissions」を選択
+      - 「Scopes」セクションまでスクロール
+      - 「User Token Scopes」の「Add an OAuth Scope」をクリック
+      - `users.profile:write` を検索して選択
+        - ※これによりプロフィールのステータス更新が可能になります
+
+   c. **ワークスペースにインストール**
+      - ページ上部の「Install to Workspace」ボタンをクリック
+      - 権限確認画面で「許可する」をクリック
+      - ※初回は管理者の承認が必要な場合があります
+
+   d. **トークンをコピー**
+      - インストール完了後、「OAuth & Permissions」ページに戻る
+      - 「OAuth Tokens for Your Workspace」セクション
+      - 「User OAuth Token」（xoxp-で始まる文字列）をコピー
+      - ⚠️ このトークンは秘密情報です。GitHubなどに公開しないでください
 
 3. 環境変数を設定:
 ```bash
@@ -60,3 +89,24 @@ npm start
 
 - Slack: `users.profile:write`
 - システム: ccusageコマンドの実行権限
+
+## トラブルシューティング
+
+### Slack Appトークン取得でよくある問題
+
+**Q: 「Create New App」ボタンが見つからない**
+- A: https://api.slack.com/apps にサインインしているか確認してください。右上にボタンが表示されます。
+
+**Q: ワークスペースが選択できない**
+- A: 対象のワークスペースにサインインしているアカウントでアクセスしてください。
+
+**Q: 「Install to Workspace」がグレーアウトしている**
+- A: OAuth Scopeが正しく追加されているか確認してください。`users.profile:write`が必要です。
+
+**Q: トークンが無効というエラーが出る**
+- A: トークンが正しくコピーされているか確認（xoxp-で始まる）
+- A: .envファイルに余分なスペースや改行が入っていないか確認
+
+**Q: プロフィールが更新されない**
+- A: Slackアプリがワークスペースにインストールされているか確認
+- A: トークンの権限が正しいか確認（User Token、Bot Tokenではない）
