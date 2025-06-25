@@ -10,80 +10,30 @@ const SLACK_TOKEN = process.env.SLACK_TOKEN;
 
 // Load messages configuration
 const messagesPath = path.join(__dirname, 'messages.json');
+const defaultMessagesPath = path.join(__dirname, 'default-messages.json');
 let messagesConfig = {};
+let defaultMessagesConfig = {};
 
+// Load default messages
+try {
+  defaultMessagesConfig = JSON.parse(fs.readFileSync(defaultMessagesPath, 'utf8'));
+  console.log('✅ Loaded default messages configuration');
+} catch (error) {
+  console.error('❌ Error loading default-messages.json:', error.message);
+}
+
+// Load custom messages (overrides defaults if present)
 try {
   messagesConfig = JSON.parse(fs.readFileSync(messagesPath, 'utf8'));
-  console.log('✅ Loaded messages configuration from messages.json');
+  console.log('✅ Loaded custom messages configuration from messages.json');
 } catch (error) {
-  console.error('❌ Error loading messages.json:', error.message);
-  console.log('⚠️  Using default hardcoded messages');
+  console.log('ℹ️  No custom messages.json found, using defaults');
+  messagesConfig = defaultMessagesConfig;
 }
 
 function getSavingsComparison(savings) {
-  // Use comparisons from messages.json if available
-  const comparisons = messagesConfig.comparisons || [];
-  
-  // Fallback to default comparisons if messages.json is not loaded
-  if (comparisons.length === 0) {
-    const defaultComparisons = [
-      { usd: 4, item: "GitHub Team 1ヶ月分" },
-      { usd: 8.75, item: "Slack Pro 1ヶ月分" },
-      { usd: 10, item: "GitHub Copilot Individual 1ヶ月分" },
-      { usd: 14, item: "Linear Team 1ヶ月分" },
-      { usd: 16, item: "Figma Personal 1ヶ月分" },
-      { usd: 20, item: "ChatGPT Plus 1ヶ月分" },
-      { usd: 20, item: "Vercel Pro 1ヶ月分" },
-      { usd: 40, item: "技術書1冊分" },
-      { usd: 63.62, item: "JetBrains全製品 1ヶ月分" },
-      { usd: 69.99, item: "Adobe Creative Cloud 1ヶ月分" },
-      { usd: 75, item: "Samsung 980 PRO 1TB" },
-      { usd: 90, item: "USB-C ハブ Anker 高性能版" },
-      { usd: 99, item: "Magic Mouse" },
-      { usd: 130, item: "Samsung 980 PRO 2TB" },
-      { usd: 149, item: "Magic Trackpad" },
-      { usd: 199, item: "Magic Keyboard テンキー付き" },
-      { usd: 248, item: "Magic Mouse + Magic Trackpad" },
-      { usd: 242, item: "Realforce R3 45g" },
-      { usd: 250, item: "CalDigit TS3 Plus" },
-      { usd: 270, item: "Dell UltraSharp 24inch" },
-      { usd: 299, item: "NVIDIA RTX 4060" },
-      { usd: 320, item: "HHKB Professional HYBRID" },
-      { usd: 349, item: "iPad Pro 11inch 256GB" },
-      { usd: 400, item: "CalDigit TS4 Thunderbolt 4" },
-      { usd: 450, item: "CalDigit USB-C SOHO ドック" },
-      { usd: 579, item: "NVIDIA RTX 4070" },
-      { usd: 599, item: "iPad Pro 12.9inch 512GB" },
-      { usd: 650, item: "Samsung 980 PRO 4TB" },
-      { usd: 659.88, item: "Adobe Creative Cloud 年間分" },
-      { usd: 689, item: "NVIDIA RTX 4070 Ti" },
-      { usd: 750, item: "Herman Miller Sayl チェア" },
-      { usd: 763.42, item: "JetBrains全製品 年間分" },
-      { usd: 850, item: "LG UltraFine 5K 27inch" },
-      { usd: 950, item: "Sony FE 24-70mm F4" },
-      { usd: 999, item: "MacBook Air M3 8GB" },
-      { usd: 999, item: "M2 Mac mini 16GB" },
-      { usd: 1300, item: "Herman Miller Aeron チェア" },
-      { usd: 1499, item: "NVIDIA RTX 4080" },
-      { usd: 1599, item: "MacBook Air M3 16GB" },
-      { usd: 1599, item: "Apple Studio Display" },
-      { usd: 1599, item: "MacBook Pro 14inch M3" },
-      { usd: 1999, item: "Mac Studio M2 Max" },
-      { usd: 2000, item: "Sony α7 IV ボディ" },
-      { usd: 2199, item: "Sony α7C II ボディ" },
-      { usd: 2298, item: "Sony FE 24-70mm F2.8 GM II" },
-      { usd: 2495, item: "Blackmagic Pocket Cinema 6K Pro" },
-      { usd: 2800, item: "MacBook Pro 14inch M3 Pro" },
-      { usd: 2829, item: "NVIDIA RTX 4090" },
-      { usd: 3000, item: "iMac 24inch M3 最上位" },
-      { usd: 3300, item: "MacBook Pro 16inch M3 Pro" },
-      { usd: 4999, item: "Pro Display XDR" },
-      { usd: 5000, item: "MacBook Pro 16inch M3 Max" },
-      { usd: 6500, item: "Mac Studio M2 Ultra" },
-      { usd: 6999, item: "Mac Pro M2 Ultra 基本構成" }
-    ];
-    comparisons.push(...defaultComparisons);
-  }
+  // Use comparisons from messages.json if available, otherwise use defaults
+  const comparisons = messagesConfig.comparisons || defaultMessagesConfig.comparisons || [];
 
   for (const comparison of comparisons) {
     if (savings <= comparison.usd) {
@@ -91,8 +41,8 @@ function getSavingsComparison(savings) {
     }
   }
   
-  // Use highUsageDefault from messages.json or fallback
-  return messagesConfig.templates?.highUsageDefault || "もはやスタートアップのサーバー代レベル";
+  // Use highUsageDefault from messages.json or fallback to default
+  return messagesConfig.templates?.highUsageDefault || defaultMessagesConfig.templates?.highUsageDefault || "もはやスタートアップのサーバー代レベル";
 }
 
 if (!SLACK_TOKEN) {
@@ -134,16 +84,8 @@ function getLatestMonthCost(data) {
 }
 
 function getLowUsageMessage(totalCost, savings) {
-  // Use lowUsageMessages from messages.json if available
-  const messages = messagesConfig.lowUsageMessages || [
-    "今月はまだ食べ放題に行くべきではない",
-    "Claude Max食べ放題まだ余裕あり",
-    "もっとClaudeに頼んでも大丈夫",
-    "Claude Max使い倒し不足",
-    "定額の恩恵を受けきれていない",
-    "まだまだClaudeと遊べる",
-    "Claude Max のポテンシャル未開拓"
-  ];
+  // Use lowUsageMessages from messages.json if available, otherwise use defaults
+  const messages = messagesConfig.lowUsageMessages || defaultMessagesConfig.lowUsageMessages || [];
   
   return messages[Math.floor(Math.random() * messages.length)];
 }
@@ -168,13 +110,13 @@ async function updateSlackProfile(totalCost, month) {
   const savings = totalCost - CLAUDE_MAX_COST;
   
   // Get thresholds from config or use defaults
-  const thresholds = messagesConfig.thresholds || {
+  const thresholds = messagesConfig.thresholds || defaultMessagesConfig.thresholds || {
     savingsComparisonMin: 12,
     buffetModeMin: 0
   };
   
   // Get templates from config or use defaults
-  const templates = messagesConfig.templates || {
+  const templates = messagesConfig.templates || defaultMessagesConfig.templates || {
     savingsComparison: "今月は{item}程度の節約 (合計: ${totalCost}, 節約: ${savings})",
     buffetMode: "Claude Max食べ放題中 (${totalCost})",
     lowUsage: "{message} (${totalCost})"
