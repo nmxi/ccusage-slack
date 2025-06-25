@@ -65,9 +65,9 @@
     "Claude Max のポテンシャル未開拓"
   ],
   "templates": {
-    "savingsComparison": "今月は{item}程度の節約 (合計: ${totalCost}, 節約: ${savings})",
-    "buffetMode": "Claude Max食べ放題中 (${totalCost})",
-    "lowUsage": "{message} (${totalCost})",
+    "savingsComparison": "今月は{item}程度の節約 (合計: {totalCost}, 節約: {savings})",
+    "buffetMode": "Claude Max食べ放題中 ({totalCost})",
+    "lowUsage": "{message} ({totalCost})",
     "highUsageDefault": "もはやスタートアップのサーバー代レベル"
   },
   "thresholds": {

@@ -106,6 +106,14 @@ function getClaudeEmoji(totalCost) {
   return ':claude-rainbow:'; // $1000以上
 }
 
+function replaceTemplate(template, replacements) {
+  let result = template;
+  for (const [key, value] of Object.entries(replacements)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  }
+  return result;
+}
+
 async function updateSlackProfile(totalCost, month) {
   const savings = totalCost - CLAUDE_MAX_COST;
   
@@ -117,27 +125,30 @@ async function updateSlackProfile(totalCost, month) {
   
   // Get templates from config or use defaults
   const templates = messagesConfig.templates || defaultMessagesConfig.templates || {
-    savingsComparison: "今月は{item}程度の節約 (合計: ${totalCost}, 節約: ${savings})",
-    buffetMode: "Claude Max食べ放題中 (${totalCost})",
-    lowUsage: "{message} (${totalCost})"
+    savingsComparison: "今月は{item}程度の節約 (合計: {totalCost}, 節約: {savings})",
+    buffetMode: "Claude Max食べ放題中 ({totalCost})",
+    lowUsage: "{message} ({totalCost})"
   };
   
   let title;
   if (savings > thresholds.savingsComparisonMin) {
     // 節約額が閾値超過の時は比較表示
-    title = templates.savingsComparison
-      .replace('{item}', getSavingsComparison(savings))
-      .replace('${totalCost}', `$${totalCost.toFixed(2)}`)
-      .replace('${savings}', `$${savings.toFixed(2)}`);
+    title = replaceTemplate(templates.savingsComparison, {
+      item: getSavingsComparison(savings),
+      totalCost: `$${totalCost.toFixed(2)}`,
+      savings: `$${savings.toFixed(2)}`
+    });
   } else if (savings > thresholds.buffetModeMin) {
     // 節約額が閾値以下の時は食べ放題中
-    title = templates.buffetMode
-      .replace('${totalCost}', `$${totalCost.toFixed(2)}`);
+    title = replaceTemplate(templates.buffetMode, {
+      totalCost: `$${totalCost.toFixed(2)}`
+    });
   } else {
     // $200未満の時はランダムメッセージ
-    title = templates.lowUsage
-      .replace('{message}', getLowUsageMessage(totalCost, savings))
-      .replace('${totalCost}', `$${totalCost.toFixed(2)}`);
+    title = replaceTemplate(templates.lowUsage, {
+      message: getLowUsageMessage(totalCost, savings),
+      totalCost: `$${totalCost.toFixed(2)}`
+    });
   }
   
   try {
