@@ -11,7 +11,7 @@ npm install
 
 2. Slack App トークンを取得:
    - https://api.slack.com/apps で新しいアプリを作成
-   - OAuth & Permissions で `users.profile:write` スコープを追加
+   - OAuth & Permissions で **User Token Scopes** に `users.profile:write` スコープを追加
    - User OAuth Token をコピー
 
 3. 環境変数を設定:
@@ -50,11 +50,11 @@ npm start
    - `Claude Max食べ放題中 ($205.00)`
 
 3. **$212超過（高使用量）**: 
-   - `Adobe Creative Cloud 1ヶ月分程度の節約 (合計: $250.00 節約$50.00)`
-   - `Sony α7C II ボディ程度の節約 (合計: $2400.00 節約$2200.00)`
-   - `NVIDIA RTX 4090程度の節約 (合計: $3100.00 節約$2900.00)`
-   - `Mac Pro M2 Ultra 基本構成程度の節約 (合計: $7000.00 節約$6800.00)`
-   - `もはやスタートアップのサーバー代レベルの節約 (合計: $10000.00+ 節約$9800.00+)`
+   - `Adobe Creative Cloud 1ヶ月分程度の節約 (合計: $250.00, 節約: $50.00)`
+   - `Sony α7C II ボディ程度の節約 (合計: $2400.00, 節約: $2200.00)`
+   - `NVIDIA RTX 4090程度の節約 (合計: $3100.00, 節約: $2900.00)`
+   - `Mac Pro M2 Ultra 基本構成程度の節約 (合計: $7000.00, 節約: $6800.00)`
+   - `もはやスタートアップのサーバー代レベルの節約 (合計: $10000.00+, 節約: $9800.00+)`
 
 ## 必要な権限
 
