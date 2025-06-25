@@ -10,30 +10,39 @@ const SLACK_TOKEN = process.env.SLACK_TOKEN;
 
 // Load messages configuration
 const messagesPath = path.join(__dirname, 'messages.json');
-const defaultMessagesPath = path.join(__dirname, 'default-messages.json');
 let messagesConfig = {};
-let defaultMessagesConfig = {};
 
-// Load default messages
-try {
-  defaultMessagesConfig = JSON.parse(fs.readFileSync(defaultMessagesPath, 'utf8'));
-  console.log('✅ Loaded default messages configuration');
-} catch (error) {
-  console.error('❌ Error loading default-messages.json:', error.message);
-}
-
-// Load custom messages (overrides defaults if present)
+// Load and validate messages configuration
 try {
   messagesConfig = JSON.parse(fs.readFileSync(messagesPath, 'utf8'));
-  console.log('✅ Loaded custom messages configuration from messages.json');
+  console.log('✅ Loaded messages configuration');
+  
+  // Validate required fields
+  if (!messagesConfig.comparisons || !Array.isArray(messagesConfig.comparisons) || messagesConfig.comparisons.length === 0) {
+    throw new Error('messages.json must contain a non-empty "comparisons" array');
+  }
+  if (!messagesConfig.lowUsageMessages || !Array.isArray(messagesConfig.lowUsageMessages) || messagesConfig.lowUsageMessages.length === 0) {
+    throw new Error('messages.json must contain a non-empty "lowUsageMessages" array');
+  }
+  if (!messagesConfig.templates || typeof messagesConfig.templates !== 'object') {
+    throw new Error('messages.json must contain a "templates" object');
+  }
+  if (!messagesConfig.templates.savingsComparison || !messagesConfig.templates.buffetMode || !messagesConfig.templates.lowUsage) {
+    throw new Error('messages.json templates must contain "savingsComparison", "buffetMode", and "lowUsage" fields');
+  }
+  if (!messagesConfig.thresholds || typeof messagesConfig.thresholds !== 'object') {
+    throw new Error('messages.json must contain a "thresholds" object');
+  }
+  if (typeof messagesConfig.thresholds.savingsComparisonMin !== 'number' || typeof messagesConfig.thresholds.buffetModeMin !== 'number') {
+    throw new Error('messages.json thresholds must contain numeric "savingsComparisonMin" and "buffetModeMin" fields');
+  }
 } catch (error) {
-  console.log('ℹ️  No custom messages.json found, using defaults');
-  messagesConfig = defaultMessagesConfig;
+  console.error('❌ Failed to load or validate messages.json:', error.message);
+  process.exit(1);
 }
 
 function getSavingsComparison(savings) {
-  // Use comparisons from messages.json if available, otherwise use defaults
-  const comparisons = messagesConfig.comparisons || defaultMessagesConfig.comparisons || [];
+  const comparisons = messagesConfig.comparisons;
 
   for (const comparison of comparisons) {
     if (savings <= comparison.usd) {
@@ -41,8 +50,8 @@ function getSavingsComparison(savings) {
     }
   }
   
-  // Use highUsageDefault from messages.json or fallback to default
-  return messagesConfig.templates?.highUsageDefault || defaultMessagesConfig.templates?.highUsageDefault || "もはやスタートアップのサーバー代レベル";
+  // Use highUsageDefault from messages.json
+  return messagesConfig.templates.highUsageDefault || "もはやスタートアップのサーバー代レベル";
 }
 
 if (!SLACK_TOKEN) {
@@ -84,9 +93,7 @@ function getLatestMonthCost(data) {
 }
 
 function getLowUsageMessage(totalCost, savings) {
-  // Use lowUsageMessages from messages.json if available, otherwise use defaults
-  const messages = messagesConfig.lowUsageMessages || defaultMessagesConfig.lowUsageMessages || [];
-  
+  const messages = messagesConfig.lowUsageMessages;
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
@@ -117,18 +124,11 @@ function replaceTemplate(template, replacements) {
 async function updateSlackProfile(totalCost, month) {
   const savings = totalCost - CLAUDE_MAX_COST;
   
-  // Get thresholds from config or use defaults
-  const thresholds = messagesConfig.thresholds || defaultMessagesConfig.thresholds || {
-    savingsComparisonMin: 12,
-    buffetModeMin: 0
-  };
+  // Get thresholds from config
+  const thresholds = messagesConfig.thresholds;
   
-  // Get templates from config or use defaults
-  const templates = messagesConfig.templates || defaultMessagesConfig.templates || {
-    savingsComparison: "今月は{item}程度の節約 (合計: {totalCost}, 節約: {savings})",
-    buffetMode: "Claude Max食べ放題中 ({totalCost})",
-    lowUsage: "{message} ({totalCost})"
-  };
+  // Get templates from config
+  const templates = messagesConfig.templates;
   
   let title;
   if (savings > thresholds.savingsComparisonMin) {
