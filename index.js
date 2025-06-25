@@ -6,7 +6,28 @@ const fs = require('fs');
 const path = require('path');
 
 const CLAUDE_MAX_COST = 200; // $200 Claude Max subscription
-const SLACK_TOKEN = process.env.SLACK_TOKEN;
+
+// Load Slack configuration
+let slackWorkspaces = [];
+if (process.env.SLACK_WORKSPACES) {
+  try {
+    slackWorkspaces = JSON.parse(process.env.SLACK_WORKSPACES);
+    console.log(`✅ Loaded ${slackWorkspaces.length} workspace(s) from SLACK_WORKSPACES`);
+  } catch (error) {
+    console.error('❌ Failed to parse SLACK_WORKSPACES JSON:', error.message);
+    process.exit(1);
+  }
+} else if (process.env.SLACK_TOKEN) {
+  // Legacy single workspace support
+  slackWorkspaces = [{
+    name: 'default',
+    token: process.env.SLACK_TOKEN
+  }];
+  console.log('✅ Using legacy SLACK_TOKEN for single workspace');
+} else {
+  console.error('❌ Either SLACK_TOKEN or SLACK_WORKSPACES environment variable is required');
+  process.exit(1);
+}
 
 // Load messages configuration
 const messagesPath = path.join(__dirname, 'messages.json');
@@ -54,9 +75,17 @@ function getSavingsComparison(savings) {
   return messagesConfig.templates.highUsageDefault || "もはやスタートアップのサーバー代レベル";
 }
 
-if (!SLACK_TOKEN) {
-  console.error('SLACK_TOKEN environment variable is required');
+// Validate workspace configuration
+if (slackWorkspaces.length === 0) {
+  console.error('❌ No Slack workspaces configured');
   process.exit(1);
+}
+
+for (const workspace of slackWorkspaces) {
+  if (!workspace.name || !workspace.token) {
+    console.error('❌ Each workspace must have "name" and "token" properties');
+    process.exit(1);
+  }
 }
 
 async function getCCUsage() {
@@ -121,7 +150,7 @@ function replaceTemplate(template, replacements) {
   return result;
 }
 
-async function updateSlackProfile(totalCost, month) {
+async function updateSlackProfile(workspace, totalCost, month) {
   const savings = totalCost - CLAUDE_MAX_COST;
   
   // Get thresholds from config
@@ -159,19 +188,27 @@ async function updateSlackProfile(totalCost, month) {
       }
     }, {
       headers: {
-        'Authorization': `Bearer ${SLACK_TOKEN}`,
+        'Authorization': `Bearer ${workspace.token}`,
         'Content-Type': 'application/json'
       }
     });
     
     if (response.data.ok) {
-      console.log(`✅ Slack profile updated: ${title}`);
+      console.log(`✅ [${workspace.name}] Slack profile updated: ${title}`);
     } else {
-      console.error('❌ Failed to update Slack profile:', response.data.error);
+      console.error(`❌ [${workspace.name}] Failed to update Slack profile:`, response.data.error);
     }
   } catch (error) {
-    console.error('❌ Error updating Slack profile:', error.message);
+    console.error(`❌ [${workspace.name}] Error updating Slack profile:`, error.message);
   }
+}
+
+async function updateAllSlackProfiles(totalCost, month) {
+  const updatePromises = slackWorkspaces.map(workspace => 
+    updateSlackProfile(workspace, totalCost, month)
+  );
+  
+  await Promise.all(updatePromises);
 }
 
 async function updateCostInfo() {
@@ -182,7 +219,7 @@ async function updateCostInfo() {
     
     console.log(`📊 Latest month (${month}): $${totalCost.toFixed(2)}`);
     
-    await updateSlackProfile(totalCost, month);
+    await updateAllSlackProfiles(totalCost, month);
   } catch (error) {
     console.error('❌ Error updating cost info:', error.message);
   }
