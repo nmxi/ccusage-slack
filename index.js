@@ -130,7 +130,7 @@ async function updateSlackProfile(totalCost, month) {
   let title;
   if (savings > 12) {
     // 節約額が$12超過の時は比較表示
-    title = `${getSavingsComparison(savings)}程度の節約 (合計: $${totalCost.toFixed(2)}, 節約: $${savings.toFixed(2)})`;
+    title = `今月は${getSavingsComparison(savings)}程度の節約 (合計: $${totalCost.toFixed(2)}, 節約: $${savings.toFixed(2)})`;
   } else if (savings > 0) {
     // 節約額が$12以下の時は食べ放題中
     title = `Claude Max食べ放題中 ($${totalCost.toFixed(2)})`;
