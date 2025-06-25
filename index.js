@@ -2,74 +2,56 @@ require('dotenv').config();
 const { exec } = require('child_process');
 const axios = require('axios');
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 
 const CLAUDE_MAX_COST = 200; // $200 Claude Max subscription
 const SLACK_TOKEN = process.env.SLACK_TOKEN;
 
+// Load messages configuration
+const messagesPath = path.join(__dirname, 'messages.json');
+let messagesConfig = {};
+
+// Load and validate messages configuration
+try {
+  messagesConfig = JSON.parse(fs.readFileSync(messagesPath, 'utf8'));
+  console.log('✅ Loaded messages configuration');
+  
+  // Validate required fields
+  if (!messagesConfig.comparisons || !Array.isArray(messagesConfig.comparisons) || messagesConfig.comparisons.length === 0) {
+    throw new Error('messages.json must contain a non-empty "comparisons" array');
+  }
+  if (!messagesConfig.lowUsageMessages || !Array.isArray(messagesConfig.lowUsageMessages) || messagesConfig.lowUsageMessages.length === 0) {
+    throw new Error('messages.json must contain a non-empty "lowUsageMessages" array');
+  }
+  if (!messagesConfig.templates || typeof messagesConfig.templates !== 'object') {
+    throw new Error('messages.json must contain a "templates" object');
+  }
+  if (!messagesConfig.templates.savingsComparison || !messagesConfig.templates.buffetMode || !messagesConfig.templates.lowUsage) {
+    throw new Error('messages.json templates must contain "savingsComparison", "buffetMode", and "lowUsage" fields');
+  }
+  if (!messagesConfig.thresholds || typeof messagesConfig.thresholds !== 'object') {
+    throw new Error('messages.json must contain a "thresholds" object');
+  }
+  if (typeof messagesConfig.thresholds.savingsComparisonMin !== 'number' || typeof messagesConfig.thresholds.buffetModeMin !== 'number') {
+    throw new Error('messages.json thresholds must contain numeric "savingsComparisonMin" and "buffetModeMin" fields');
+  }
+} catch (error) {
+  console.error('❌ Failed to load or validate messages.json:', error.message);
+  process.exit(1);
+}
+
 function getSavingsComparison(savings) {
-  const comparisons = [
-    { usd: 4, item: "GitHub Team 1ヶ月分" },
-    { usd: 8.75, item: "Slack Pro 1ヶ月分" },
-    { usd: 10, item: "GitHub Copilot Individual 1ヶ月分" },
-    { usd: 14, item: "Linear Team 1ヶ月分" },
-    { usd: 16, item: "Figma Personal 1ヶ月分" },
-    { usd: 20, item: "ChatGPT Plus 1ヶ月分" },
-    { usd: 20, item: "Vercel Pro 1ヶ月分" },
-    { usd: 40, item: "技術書1冊分" },
-    { usd: 63.62, item: "JetBrains全製品 1ヶ月分" },
-    { usd: 69.99, item: "Adobe Creative Cloud 1ヶ月分" },
-    { usd: 75, item: "Samsung 980 PRO 1TB" },
-    { usd: 90, item: "USB-C ハブ Anker 高性能版" },
-    { usd: 99, item: "Magic Mouse" },
-    { usd: 130, item: "Samsung 980 PRO 2TB" },
-    { usd: 149, item: "Magic Trackpad" },
-    { usd: 199, item: "Magic Keyboard テンキー付き" },
-    { usd: 248, item: "Magic Mouse + Magic Trackpad" },
-    { usd: 242, item: "Realforce R3 45g" },
-    { usd: 250, item: "CalDigit TS3 Plus" },
-    { usd: 270, item: "Dell UltraSharp 24inch" },
-    { usd: 299, item: "NVIDIA RTX 4060" },
-    { usd: 320, item: "HHKB Professional HYBRID" },
-    { usd: 349, item: "iPad Pro 11inch 256GB" },
-    { usd: 400, item: "CalDigit TS4 Thunderbolt 4" },
-    { usd: 450, item: "CalDigit USB-C SOHO ドック" },
-    { usd: 579, item: "NVIDIA RTX 4070" },
-    { usd: 599, item: "iPad Pro 12.9inch 512GB" },
-    { usd: 650, item: "Samsung 980 PRO 4TB" },
-    { usd: 659.88, item: "Adobe Creative Cloud 年間分" },
-    { usd: 689, item: "NVIDIA RTX 4070 Ti" },
-    { usd: 750, item: "Herman Miller Sayl チェア" },
-    { usd: 763.42, item: "JetBrains全製品 年間分" },
-    { usd: 850, item: "LG UltraFine 5K 27inch" },
-    { usd: 950, item: "Sony FE 24-70mm F4" },
-    { usd: 999, item: "MacBook Air M3 8GB" },
-    { usd: 999, item: "M2 Mac mini 16GB" },
-    { usd: 1300, item: "Herman Miller Aeron チェア" },
-    { usd: 1499, item: "NVIDIA RTX 4080" },
-    { usd: 1599, item: "MacBook Air M3 16GB" },
-    { usd: 1599, item: "Apple Studio Display" },
-    { usd: 1599, item: "MacBook Pro 14inch M3" },
-    { usd: 1999, item: "Mac Studio M2 Max" },
-    { usd: 2000, item: "Sony α7 IV ボディ" },
-    { usd: 2199, item: "Sony α7C II ボディ" },
-    { usd: 2298, item: "Sony FE 24-70mm F2.8 GM II" },
-    { usd: 2495, item: "Blackmagic Pocket Cinema 6K Pro" },
-    { usd: 2800, item: "MacBook Pro 14inch M3 Pro" },
-    { usd: 2829, item: "NVIDIA RTX 4090" },
-    { usd: 3000, item: "iMac 24inch M3 最上位" },
-    { usd: 3300, item: "MacBook Pro 16inch M3 Pro" },
-    { usd: 4999, item: "Pro Display XDR" },
-    { usd: 5000, item: "MacBook Pro 16inch M3 Max" },
-    { usd: 6500, item: "Mac Studio M2 Ultra" },
-    { usd: 6999, item: "Mac Pro M2 Ultra 基本構成" }
-  ];
+  const comparisons = messagesConfig.comparisons;
 
   for (const comparison of comparisons) {
     if (savings <= comparison.usd) {
       return comparison.item;
     }
   }
-  return "もはやスタートアップのサーバー代レベル";
+  
+  // Use highUsageDefault from messages.json
+  return messagesConfig.templates.highUsageDefault || "もはやスタートアップのサーバー代レベル";
 }
 
 if (!SLACK_TOKEN) {
@@ -111,16 +93,7 @@ function getLatestMonthCost(data) {
 }
 
 function getLowUsageMessage(totalCost, savings) {
-  const messages = [
-    "今月はまだ食べ放題に行くべきではない",
-    "Claude Max食べ放題まだ余裕あり",
-    "もっとClaudeに頼んでも大丈夫",
-    "Claude Max使い倒し不足",
-    "定額の恩恵を受けきれていない",
-    "まだまだClaudeと遊べる",
-    "Claude Max のポテンシャル未開拓"
-  ];
-  
+  const messages = messagesConfig.lowUsageMessages;
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
@@ -140,19 +113,42 @@ function getClaudeEmoji(totalCost) {
   return ':claude-rainbow:'; // $1000以上
 }
 
+function replaceTemplate(template, replacements) {
+  let result = template;
+  for (const [key, value] of Object.entries(replacements)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  }
+  return result;
+}
+
 async function updateSlackProfile(totalCost, month) {
   const savings = totalCost - CLAUDE_MAX_COST;
   
+  // Get thresholds from config
+  const thresholds = messagesConfig.thresholds;
+  
+  // Get templates from config
+  const templates = messagesConfig.templates;
+  
   let title;
-  if (savings > 12) {
-    // 節約額が$12超過の時は比較表示
-    title = `今月は${getSavingsComparison(savings)}程度の節約 (合計: $${totalCost.toFixed(2)}, 節約: $${savings.toFixed(2)})`;
-  } else if (savings > 0) {
-    // 節約額が$12以下の時は食べ放題中
-    title = `Claude Max食べ放題中 ($${totalCost.toFixed(2)})`;
+  if (savings > thresholds.savingsComparisonMin) {
+    // 節約額が閾値超過の時は比較表示
+    title = replaceTemplate(templates.savingsComparison, {
+      item: getSavingsComparison(savings),
+      totalCost: `$${totalCost.toFixed(2)}`,
+      savings: `$${savings.toFixed(2)}`
+    });
+  } else if (savings > thresholds.buffetModeMin) {
+    // 節約額が閾値以下の時は食べ放題中
+    title = replaceTemplate(templates.buffetMode, {
+      totalCost: `$${totalCost.toFixed(2)}`
+    });
   } else {
     // $200未満の時はランダムメッセージ
-    title = `${getLowUsageMessage(totalCost, savings)} ($${totalCost.toFixed(2)})`;
+    title = replaceTemplate(templates.lowUsage, {
+      message: getLowUsageMessage(totalCost, savings),
+      totalCost: `$${totalCost.toFixed(2)}`
+    });
   }
   
   try {
