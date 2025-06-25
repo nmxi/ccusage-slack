@@ -124,6 +124,22 @@ function getLowUsageMessage(totalCost, savings) {
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
+function getClaudeEmoji(totalCost) {
+  // Select emoji based on totalCost thresholds
+  if (totalCost < 50) return ':claude-0:';
+  if (totalCost < 100) return ':claude-50:';
+  if (totalCost < 150) return ':claude-100:';
+  if (totalCost < 200) return ':claude-150:';
+  if (totalCost < 250) return ':claude-200:';
+  if (totalCost < 300) return ':claude-250:';
+  if (totalCost < 350) return ':claude-300:';
+  if (totalCost < 400) return ':claude-350:';
+  if (totalCost < 450) return ':claude-400:';
+  if (totalCost < 500) return ':claude-450:';
+  if (totalCost < 1000) return ':claude-500:';
+  return ':claude-rainbow:'; // $1000以上
+}
+
 async function updateSlackProfile(totalCost, month) {
   const savings = totalCost - CLAUDE_MAX_COST;
   
@@ -143,7 +159,7 @@ async function updateSlackProfile(totalCost, month) {
     const response = await axios.post('https://slack.com/api/users.profile.set', {
       profile: {
         status_text: title,
-        status_emoji: ':claude:'
+        status_emoji: getClaudeEmoji(totalCost)
       }
     }, {
       headers: {
