@@ -1,9 +1,21 @@
-require('dotenv').config();
+const path = require('path');
 const { exec } = require('child_process');
 const axios = require('axios');
 const cron = require('node-cron');
 const fs = require('fs');
-const path = require('path');
+
+// Determine if running as pkg executable or node
+const isPkg = process.pkg !== undefined;
+const baseDir = isPkg ? path.dirname(process.execPath) : __dirname;
+
+// Load .env from the appropriate directory
+if (isPkg) {
+  // When running as exe, load from exe directory
+  require('dotenv').config({ path: path.join(baseDir, '.env') });
+} else {
+  // When running with node, load from project root
+  require('dotenv').config();
+}
 
 const CLAUDE_MAX_COST = 200; // $200 Claude Max subscription
 
@@ -29,8 +41,8 @@ if (process.env.SLACK_WORKSPACES) {
   process.exit(1);
 }
 
-// Load messages configuration
-const messagesPath = path.join(__dirname, 'messages.json');
+// Load messages configuration from the appropriate directory
+const messagesPath = path.join(baseDir, 'messages.json');
 let messagesConfig = {};
 
 // Load and validate messages configuration

@@ -97,6 +97,50 @@ npm start
 - Slack: `users.profile:write`
 - システム: ccusageコマンドの実行権限
 
+## Windows実行ファイル（exe）のビルド
+
+Node.jsがインストールされていないWindows環境でも動作する単体実行ファイルを作成できます。
+
+### ビルド手順
+
+1. **開発環境で依存関係をインストール:**
+```bash
+npm install
+npm install --save-dev pkg
+```
+
+2. **ビルドコマンドを実行:**
+```bash
+npm run build
+```
+
+3. **ビルド結果:**
+   - `build/ccusage-slack.exe` が作成されます（約39MB）
+
+### 実行ファイルの使用方法
+
+1. **必要なファイルを配置:**
+   ```
+   任意のフォルダ/
+   ├── ccusage-slack.exe    # ビルドした実行ファイル
+   ├── messages.json        # メッセージ設定ファイル（プロジェクトからコピー）
+   └── .env                 # 環境変数ファイル（作成）
+   ```
+
+2. **.envファイルを作成:**
+   ```
+   SLACK_TOKEN=xoxp-your-slack-token-here
+   ```
+
+3. **実行:**
+   - `ccusage-slack.exe` をダブルクリックまたはコマンドプロンプトから実行
+   - ファイアウォールの警告が出た場合は許可してください
+
+### 注意事項
+- exeファイルは必ず`.env`と`messages.json`と同じディレクトリに配置してください
+- 初回実行時にWindows Defenderの警告が表示される場合があります
+- ccusageコマンドがシステムにインストールされている必要があります
+
 ## トラブルシューティング
 
 ### Slack Appトークン取得でよくある問題
