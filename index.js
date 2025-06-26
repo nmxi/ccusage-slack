@@ -1,6 +1,6 @@
 const path = require('path');
 const { exec } = require('child_process');
-const axios = require('axios');
+const https = require('https');
 const cron = require('node-cron');
 const fs = require('fs');
 
@@ -193,16 +193,43 @@ async function updateSlackProfile(workspace, totalCost, month) {
   }
   
   try {
-    const response = await axios.post('https://slack.com/api/users.profile.set', {
+    const data = JSON.stringify({
       profile: {
         status_text: title,
         status_emoji: getClaudeEmoji(totalCost)
       }
-    }, {
-      headers: {
-        'Authorization': `Bearer ${workspace.token}`,
-        'Content-Type': 'application/json'
-      }
+    });
+
+    const response = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'slack.com',
+        path: '/api/users.profile.set',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${workspace.token}`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data)
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let responseData = '';
+        res.on('data', (chunk) => {
+          responseData += chunk;
+        });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(responseData);
+            resolve({ data: parsed });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(data);
+      req.end();
     });
     
     if (response.data.ok) {

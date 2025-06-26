@@ -7,13 +7,12 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "build": "pkg . --out-path build"
+    "build": "pkg . --out-path build",
+    "postbuild": "node -e \"const fs=require('fs'); ['messages.json','.env.example'].forEach(f=>{try{fs.copyFileSync(f,'build/'+f)}catch(e){}})\""
   },
   "dependencies": {
-    "axios": "^1.6.2",
     "dotenv": "^16.3.1",
-    "node-cron": "^3.0.3",
-    "sharp": "^0.34.2"
+    "node-cron": "^3.0.3"
   },
   "keywords": [
     "slack",
@@ -29,10 +28,7 @@
     ],
     "outputPath": "build",
     "assets": [
-      "node_modules/axios/**/*"
-    ],
-    "scripts": [
-      "node_modules/axios/dist/node/axios.cjs"
+      "messages.json"
     ]
   },
   "devDependencies": {
